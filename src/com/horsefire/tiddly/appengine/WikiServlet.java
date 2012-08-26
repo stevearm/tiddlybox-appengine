@@ -4,7 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -27,7 +29,7 @@ public class WikiServlet extends PreferencedServlet {
 	private static final Logger LOG = LoggerFactory
 			.getLogger(WikiServlet.class);
 
-	private static String extractString(InputStream in2) throws IOException {
+	public static String extractString(InputStream in2) throws IOException {
 		BufferedReader in = new BufferedReader(new InputStreamReader(in2));
 
 		StringBuilder wikiContents = new StringBuilder();
@@ -102,10 +104,35 @@ public class WikiServlet extends PreferencedServlet {
 	private void pushWikiContents(UserPreferences prefs, String content)
 			throws IOException, OAuthMessageSignerException,
 			OAuthExpectationFailedException, OAuthCommunicationException {
-		final DropboxWikiClient client = new DropboxWikiClient(
-				prefs.getOauthTokenKey(), prefs.getOauthTokenSecret(),
-				prefs.getWikiPath());
-		client.pushWiki(content);
+		OAuthConsumer consumer = new DefaultOAuthConsumer(
+				AppCredentials.INSTANCE.getKey(),
+				AppCredentials.INSTANCE.getSecret());
+		consumer.setTokenWithSecret(prefs.getOauthTokenKey(),
+				prefs.getOauthTokenSecret());
+
+		String filename = prefs.getWikiPath(); // "text.txt";
+
+		final URL url = new URL(
+				"https://api-content.dropbox.com/1/files_put/dropbox"
+						+ filename);
+		final HttpURLConnection connection = (HttpURLConnection) url
+				.openConnection();
+		connection.setRequestMethod("PUT");
+		connection.setDoOutput(true);
+		connection.setDoInput(true);
+		connection.setRequestProperty("Content-Length", ""
+				+ content.getBytes().length);
+
+		consumer.sign(connection);
+
+		Writer out = new OutputStreamWriter(connection.getOutputStream());
+		out.write(content);
+		out.close();
+		int responseCode = connection.getResponseCode();
+		if (responseCode != HttpServletResponse.SC_OK) {
+			LOG.warn("Failed to save {}: {}", responseCode,
+					WikiServlet.extractString(connection.getInputStream()));
+		}
 	}
 
 	@Override
