@@ -42,7 +42,7 @@ public class WikiServlet extends PreferencedServlet {
 		return wikiContents.toString();
 	}
 
-	private static String getUpdatedWikiContents(UserPreferences prefs)
+	private static String getUpdatedWikiContents(UserInfoService prefs)
 			throws IOException, OAuthMessageSignerException,
 			OAuthExpectationFailedException, OAuthCommunicationException {
 		final OAuthConsumer consumer = new DefaultOAuthConsumer(
@@ -75,7 +75,7 @@ public class WikiServlet extends PreferencedServlet {
 	}
 
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
-			UserPreferences prefs) throws ServletException, IOException {
+			UserInfoService prefs) throws ServletException, IOException {
 		prefs.setWikiPath(req.getPathInfo());
 		if (prefs.needsAuthorization()) {
 			resp.sendRedirect("/handshake/one");
@@ -101,7 +101,7 @@ public class WikiServlet extends PreferencedServlet {
 		LOG.error(message, e);
 	}
 
-	private void pushWikiContents(UserPreferences prefs, String content)
+	private void pushWikiContents(UserInfoService prefs, String content)
 			throws IOException, OAuthMessageSignerException,
 			OAuthExpectationFailedException, OAuthCommunicationException {
 		OAuthConsumer consumer = new DefaultOAuthConsumer(
@@ -137,7 +137,7 @@ public class WikiServlet extends PreferencedServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp,
-			UserPreferences prefs) throws ServletException, IOException {
+			UserInfoService prefs) throws ServletException, IOException {
 		prefs.setWikiPath(req.getPathInfo());
 		if (prefs.needsAuthorization()) {
 			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED,

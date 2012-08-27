@@ -25,7 +25,7 @@ public class HandshakeTwoServlet extends PreferencedServlet {
 			.getLogger(HandshakeTwoServlet.class);
 
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
-			UserPreferences prefs) throws ServletException, IOException {
+			UserInfoService prefs) throws ServletException, IOException {
 
 		final OAuthConsumer consumer = new DefaultOAuthConsumer(
 				AppCredentials.INSTANCE.getKey(),

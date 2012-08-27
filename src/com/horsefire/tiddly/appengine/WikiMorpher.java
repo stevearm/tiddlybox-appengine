@@ -26,7 +26,7 @@ public class WikiMorpher {
 		return base.substring(index, base.length() - 1);
 	}
 
-	public StringBuilder prepareToServe(String original, UserPreferences prefs) {
+	public StringBuilder prepareToServe(String original, UserInfoService prefs) {
 		StringBuilder result = new StringBuilder();
 		result.append(getToEndOf(original, "<!--POST-SCRIPT-START-->"));
 		result.append("<script type=\"text/javascript\" src=\"/tiddlybox.js\"></script>");

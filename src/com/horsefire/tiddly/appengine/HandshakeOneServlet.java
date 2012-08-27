@@ -26,7 +26,7 @@ public class HandshakeOneServlet extends PreferencedServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
-			UserPreferences prefs) throws ServletException, IOException {
+			UserInfoService prefs) throws ServletException, IOException {
 		final OAuthConsumer consumer = new DefaultOAuthConsumer(
 				AppCredentials.INSTANCE.getKey(),
 				AppCredentials.INSTANCE.getSecret());
