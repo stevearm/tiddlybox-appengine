@@ -40,8 +40,10 @@ public class HandshakeOneServlet extends PreferencedServlet {
 			if (req.getServerPort() != 80) {
 				host = host + ':' + req.getLocalPort();
 			}
-			final String url = provider.retrieveRequestToken(consumer,
-					(host + req.getContextPath()) + "/handshake/two");
+			final String url = provider
+					.retrieveRequestToken(consumer,
+							(host + req.getContextPath())
+									+ ServletMapper.HANDSHAKE_TWO);
 			prefs.setOauthTokenKey(consumer.getToken());
 			prefs.setOauthTokenSecret(consumer.getTokenSecret());
 			resp.sendRedirect(url);

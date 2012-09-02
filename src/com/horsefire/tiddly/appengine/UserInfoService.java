@@ -1,5 +1,6 @@
 package com.horsefire.tiddly.appengine;
 
+import java.util.Date;
 import java.util.UUID;
 
 import javax.servlet.http.Cookie;
@@ -33,6 +34,7 @@ public class UserInfoService {
 	private static final String KEY_WIKI_PATH = "wikiPath";
 	private static final String KEY_OAUTH_TOKEN_KEY = "oauthTokenKey";
 	private static final String KEY_OAUTH_TOKEN_SECRET = "oauthTokenSecret";
+	private static final String KEY_COOKIE_EXPIRY = "cookieExpires";
 
 	private final DatastoreService m_service;
 	private Entity m_entity;
@@ -68,6 +70,11 @@ public class UserInfoService {
 		} catch (EntityNotFoundException e) {
 			m_entity = new Entity(dbKey);
 		}
+		if (m_entity.getProperty(KEY_COOKIE_EXPIRY) == null) {
+			Date expiry = new Date(System.currentTimeMillis()
+					+ (EXPIRE_SECONDS * 1000));
+			m_entity.setProperty(KEY_COOKIE_EXPIRY, expiry);
+		}
 	}
 
 	public void save() {
@@ -85,18 +92,6 @@ public class UserInfoService {
 			return "";
 		}
 		return wikiPath;
-	}
-
-	public String getFullWikiPath() {
-		final String WIKI_URL = "/wiki/";
-		String wikiPath = getWikiPath();
-		if (isEmpty(wikiPath)) {
-			return WIKI_URL;
-		}
-		if (wikiPath.charAt(0) == '/') {
-			return WIKI_URL + wikiPath.substring(1);
-		}
-		return WIKI_URL + wikiPath;
 	}
 
 	public void setWikiPath(String wikiPath) {

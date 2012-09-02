@@ -1,5 +1,8 @@
 package com.horsefire.tiddly.appengine;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,16 +34,21 @@ public class WikiMorpher {
 		result.append(getToEndOf(original, "<!--POST-SCRIPT-START-->"));
 		result.append("<script type=\"text/javascript\" src=\"/tiddlybox.js\"></script>");
 		result.append("<script type=\"text/javascript\">var tiddlybox_post_url = '"
-				+ prefs.getFullWikiPath() + "'</script>");
+				+ ServletMapper.WIKI + prefs.getWikiPath() + "'</script>");
 		result.append(getFromStartOf(original, "<!--POST-SCRIPT-END-->"));
 		return result;
 	}
 
-	public String prepareToSave(String original, String newStore) {
+	public String prepareToSave(String original, BufferedReader newStore)
+			throws IOException {
 		StringBuilder result = new StringBuilder();
 		result.append(getToEndOf(original, "<!--POST-SHADOWAREA-->")).append(
 				'\n');
 		result.append("<div id=\"storeArea\">").append('\n');
+		String line = null;
+		while ((line = newStore.readLine()) != null) {
+			result.append(line).append('\n');
+		}
 		result.append(newStore);
 		result.append("</div>").append('\n');
 		result.append(getFromStartOf(original, "<!--POST-STOREAREA-->"));
