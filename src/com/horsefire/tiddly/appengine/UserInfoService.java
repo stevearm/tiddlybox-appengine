@@ -8,7 +8,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.google.appengine.api.datastore.DatastoreService;
-import com.google.appengine.api.datastore.DatastoreServiceFactory;
 import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.Key;
@@ -36,11 +35,11 @@ public class UserInfoService {
 	private static final String KEY_OAUTH_TOKEN_SECRET = "oauthTokenSecret";
 	private static final String KEY_COOKIE_EXPIRY = "cookieExpires";
 
-	private final DatastoreService m_service;
+	private final DatastoreService m_datastore;
 	private Entity m_entity;
 
-	public UserInfoService() {
-		m_service = DatastoreServiceFactory.getDatastoreService();
+	public UserInfoService(DatastoreService datastore) {
+		m_datastore = datastore;
 	}
 
 	private String getSessionKey(HttpServletRequest req,
@@ -66,7 +65,7 @@ public class UserInfoService {
 		String sessionKey = getSessionKey(req, resp);
 		Key dbKey = KeyFactory.createKey("Prefs", sessionKey);
 		try {
-			m_entity = m_service.get(dbKey);
+			m_entity = m_datastore.get(dbKey);
 		} catch (EntityNotFoundException e) {
 			m_entity = new Entity(dbKey);
 		}
@@ -78,7 +77,7 @@ public class UserInfoService {
 	}
 
 	public void save() {
-		m_service.put(m_entity);
+		m_datastore.put(m_entity);
 	}
 
 	public boolean needsAuthorization() {
@@ -130,5 +129,9 @@ public class UserInfoService {
 		assertNotEmpty(oauthTokenSecret, "Secret");
 		m_entity.setProperty(UserInfoService.KEY_OAUTH_TOKEN_SECRET,
 				oauthTokenSecret);
+	}
+
+	public Key getDbKey() {
+		return m_entity.getKey();
 	}
 }

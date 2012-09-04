@@ -13,8 +13,12 @@ import oauth.signpost.exception.OAuthCommunicationException;
 import oauth.signpost.exception.OAuthExpectationFailedException;
 import oauth.signpost.exception.OAuthMessageSignerException;
 
+import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.appengine.api.datastore.DatastoreService;
+import com.horsefire.tiddly.appengine.dropbox.DropboxService;
 
 @SuppressWarnings("serial")
 public class WikiServlet extends PreferencedServlet {
@@ -28,8 +32,10 @@ public class WikiServlet extends PreferencedServlet {
 		m_morpher = new WikiMorpher();
 	}
 
+	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
-			UserInfoService prefs) throws ServletException, IOException {
+			DatastoreService datastore, UserInfoService prefs)
+			throws ServletException, IOException {
 		String path = req.getParameter("path");
 		if (path != null && !path.isEmpty()) {
 			prefs.setWikiPath(path);
@@ -39,16 +45,25 @@ public class WikiServlet extends PreferencedServlet {
 			return;
 		}
 
+		if (prefs.getWikiPath().isEmpty()) {
+			resp.getWriter().print("Must specify the wiki path with ?path=/");
+			return;
+		}
+
 		PrintWriter out = resp.getWriter();
 		try {
-			DropboxService service = new DropboxService(prefs);
-			final String contents = service.getText(prefs.getWikiPath());
+			FileService service = new FileService(datastore, prefs,
+					new DropboxService(prefs));
+			final String contents = IoUtils.getString(service.getFile(prefs
+					.getWikiPath()));
 			out.println(m_morpher.prepareToServe(contents, prefs));
 		} catch (OAuthMessageSignerException e) {
 			getError(out, e);
 		} catch (OAuthExpectationFailedException e) {
 			getError(out, e);
 		} catch (OAuthCommunicationException e) {
+			getError(out, e);
+		} catch (ParseException e) {
 			getError(out, e);
 		}
 	}
@@ -61,8 +76,9 @@ public class WikiServlet extends PreferencedServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp,
-			UserInfoService prefs) throws ServletException, IOException {
-		if (prefs.needsAuthorization()) {
+			DatastoreService datastore, UserInfoService userService)
+			throws ServletException, IOException {
+		if (userService.needsAuthorization()) {
 			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED,
 					"{\"success\":false,\"message\":\"Have not logged in yet. Please refresh\"}");
 			return;
@@ -70,13 +86,15 @@ public class WikiServlet extends PreferencedServlet {
 		final PrintWriter out = resp.getWriter();
 
 		try {
-			DropboxService service = new DropboxService(prefs);
-			String oldStore = service.getText(prefs.getWikiPath());
+			FileService fileService = new FileService(datastore, userService,
+					new DropboxService(userService));
+			String oldStore = IoUtils.getString(fileService.getFile(userService
+					.getWikiPath()));
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
 					req.getInputStream()));
 			String newFile = m_morpher.prepareToSave(oldStore, reader);
 			reader.close();
-			service.putText(prefs.getWikiPath(), newFile);
+			fileService.putFile(userService.getWikiPath(), newFile.getBytes());
 
 			resp.getWriter().print("{\"success\":true}");
 		} catch (OAuthMessageSignerException e) {
@@ -84,6 +102,8 @@ public class WikiServlet extends PreferencedServlet {
 		} catch (OAuthExpectationFailedException e) {
 			postError(out, e);
 		} catch (OAuthCommunicationException e) {
+			postError(out, e);
+		} catch (ParseException e) {
 			postError(out, e);
 		}
 	}

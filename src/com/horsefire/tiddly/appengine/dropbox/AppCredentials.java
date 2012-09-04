@@ -1,4 +1,4 @@
-package com.horsefire.tiddly.appengine;
+package com.horsefire.tiddly.appengine.dropbox;
 
 import org.slf4j.LoggerFactory;
 
