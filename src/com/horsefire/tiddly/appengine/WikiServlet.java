@@ -26,12 +26,6 @@ public class WikiServlet extends PreferencedServlet {
 	private static final Logger LOG = LoggerFactory
 			.getLogger(WikiServlet.class);
 
-	private final WikiMorpher m_morpher;
-
-	public WikiServlet() {
-		m_morpher = new WikiMorpher();
-	}
-
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
 			DatastoreService datastore, UserInfoService prefs)
@@ -54,9 +48,8 @@ public class WikiServlet extends PreferencedServlet {
 		try {
 			FileService service = new FileService(datastore, prefs,
 					new DropboxService(prefs));
-			final String contents = IoUtils.getString(service.getFile(prefs
-					.getWikiPath()));
-			out.println(m_morpher.prepareToServe(contents, prefs));
+			WikiService wikiService = new WikiService(prefs, service);
+			out.println(wikiService.prepareToServe());
 		} catch (OAuthMessageSignerException e) {
 			getError(out, e);
 		} catch (OAuthExpectationFailedException e) {
@@ -88,13 +81,11 @@ public class WikiServlet extends PreferencedServlet {
 		try {
 			FileService fileService = new FileService(datastore, userService,
 					new DropboxService(userService));
-			String oldStore = IoUtils.getString(fileService.getFile(userService
-					.getWikiPath()));
+			WikiService service = new WikiService(userService, fileService);
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
 					req.getInputStream()));
-			String newFile = m_morpher.prepareToSave(oldStore, reader);
+			service.saveNewStore(reader);
 			reader.close();
-			fileService.putFile(userService.getWikiPath(), newFile.getBytes());
 
 			resp.getWriter().print("{\"success\":true}");
 		} catch (OAuthMessageSignerException e) {
