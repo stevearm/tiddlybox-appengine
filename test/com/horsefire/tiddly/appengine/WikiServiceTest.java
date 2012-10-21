@@ -66,14 +66,13 @@ public class WikiServiceTest extends TestCase {
 		FileService fileService = EasyMock.createMock(FileService.class);
 
 		String path = "/Wiki/wiki.html";
-		expect(userService.getWikiPath()).andStubReturn(path);
 		expect(fileService.getFile(path)).andReturn(
 				getFile("base.html").getBytes());
 
 		replay(userService, fileService);
 
-		WikiService service = new WikiService(userService, fileService);
-		String toServe = service.prepareToServe();
+		WikiService service = new WikiService(fileService);
+		String toServe = service.prepareToServe(path);
 		assertByLine(getFile("serve.html"), toServe);
 
 		verify(userService, fileService);
@@ -84,7 +83,6 @@ public class WikiServiceTest extends TestCase {
 		FileService fileService = EasyMock.createMock(FileService.class);
 
 		String path = "/Wiki/wiki.html";
-		expect(userService.getWikiPath()).andStubReturn(path);
 		expect(fileService.getFile(path)).andReturn(
 				getFile("base.html").getBytes());
 
@@ -100,10 +98,10 @@ public class WikiServiceTest extends TestCase {
 
 		replay(userService, fileService);
 
-		WikiService service = new WikiService(userService, fileService);
+		WikiService service = new WikiService(fileService);
 		BufferedReader reader = new BufferedReader(new StringReader(
 				getFile("modStore1.html")));
-		service.saveNewStore(reader);
+		service.saveNewStore(reader, path);
 		assertByLine(getFile("mod1.html"), savedFile.get());
 
 		verify(userService, fileService);

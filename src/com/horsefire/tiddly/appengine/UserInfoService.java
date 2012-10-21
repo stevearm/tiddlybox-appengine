@@ -30,7 +30,6 @@ public class UserInfoService {
 	* 24 /* hour/day */
 	* 60 /* days */;
 
-	private static final String KEY_WIKI_PATH = "wikiPath";
 	private static final String KEY_OAUTH_TOKEN_KEY = "oauthTokenKey";
 	private static final String KEY_OAUTH_TOKEN_SECRET = "oauthTokenSecret";
 	private static final String KEY_COOKIE_EXPIRY = "cookieExpires";
@@ -82,24 +81,6 @@ public class UserInfoService {
 
 	public boolean needsAuthorization() {
 		return getOauthTokenKey().isEmpty() || getOauthTokenSecret().isEmpty();
-	}
-
-	public String getWikiPath() {
-		String wikiPath = (String) m_entity
-				.getProperty(UserInfoService.KEY_WIKI_PATH);
-		if (wikiPath == null) {
-			return "";
-		}
-		return wikiPath;
-	}
-
-	public void setWikiPath(String wikiPath) {
-		assertNotEmpty(wikiPath, "Path");
-		if (!wikiPath.endsWith(".html") && !wikiPath.endsWith(".htm")) {
-			throw new IllegalArgumentException(
-					"Path must be an htm or html file");
-		}
-		m_entity.setProperty(UserInfoService.KEY_WIKI_PATH, wikiPath);
 	}
 
 	public String getOauthTokenKey() {

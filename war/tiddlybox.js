@@ -1,3 +1,4 @@
+var tiddlybox_post_url = document.location.pathname;
 tiddlybox_setup = function() {
   readOnly = false;
 

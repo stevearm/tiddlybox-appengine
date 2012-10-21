@@ -26,21 +26,23 @@ public class WikiServlet extends PreferencedServlet {
 	private static final Logger LOG = LoggerFactory
 			.getLogger(WikiServlet.class);
 
+	private static String getPath(HttpServletRequest req) {
+		String wikiPath = req.getPathInfo();
+		if (wikiPath != null && !wikiPath.endsWith(".html")
+				&& !wikiPath.endsWith(".htm")) {
+			throw new IllegalArgumentException(
+					"Path must be an htm or html file");
+		}
+		return wikiPath;
+	}
+
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
 			DatastoreService datastore, UserInfoService prefs)
 			throws ServletException, IOException {
-		String path = req.getParameter("path");
-		if (path != null && !path.isEmpty()) {
-			prefs.setWikiPath(path);
-		}
+		String path = getPath(req);
 		if (prefs.needsAuthorization()) {
 			resp.sendRedirect(ServletMapper.HANDSHAKE_ONE);
-			return;
-		}
-
-		if (prefs.getWikiPath().isEmpty()) {
-			resp.getWriter().print("Must specify the wiki path with ?path=/");
 			return;
 		}
 
@@ -48,8 +50,8 @@ public class WikiServlet extends PreferencedServlet {
 		try {
 			FileService service = new FileService(datastore, prefs,
 					new DropboxService(prefs));
-			WikiService wikiService = new WikiService(prefs, service);
-			out.println(wikiService.prepareToServe());
+			WikiService wikiService = new WikiService(service);
+			out.println(wikiService.prepareToServe(path));
 		} catch (OAuthMessageSignerException e) {
 			getError(out, e);
 		} catch (OAuthExpectationFailedException e) {
@@ -71,6 +73,7 @@ public class WikiServlet extends PreferencedServlet {
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp,
 			DatastoreService datastore, UserInfoService userService)
 			throws ServletException, IOException {
+		String path = getPath(req);
 		if (userService.needsAuthorization()) {
 			resp.sendError(HttpServletResponse.SC_UNAUTHORIZED,
 					"{\"success\":false,\"message\":\"Have not logged in yet. Please refresh\"}");
@@ -81,10 +84,10 @@ public class WikiServlet extends PreferencedServlet {
 		try {
 			FileService fileService = new FileService(datastore, userService,
 					new DropboxService(userService));
-			WikiService service = new WikiService(userService, fileService);
+			WikiService service = new WikiService(fileService);
 			BufferedReader reader = new BufferedReader(new InputStreamReader(
 					req.getInputStream()));
-			service.saveNewStore(reader);
+			service.saveNewStore(reader, path);
 			reader.close();
 
 			resp.getWriter().print("{\"success\":true}");

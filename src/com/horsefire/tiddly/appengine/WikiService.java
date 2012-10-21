@@ -34,46 +34,40 @@ public class WikiService {
 		return base.substring(index);
 	}
 
-	private final UserInfoService m_userService;
 	private final FileService m_fileService;
 
-	public WikiService(UserInfoService userService, FileService fileService) {
-		m_userService = userService;
+	public WikiService(FileService fileService) {
 		m_fileService = fileService;
 	}
 
-	public String prepareToServe() throws OAuthMessageSignerException,
+	public String prepareToServe(String path)
+			throws OAuthMessageSignerException,
 			OAuthExpectationFailedException, OAuthCommunicationException,
 			IOException, ParseException {
-		String original = new String(m_fileService.getFile(m_userService
-				.getWikiPath()));
+		String original = new String(m_fileService.getFile(path));
 		StringBuilder result = new StringBuilder();
 		result.append(getToEndOf(original, "<!--POST-SCRIPT-START-->"));
 		result.append("<script type=\"text/javascript\" src=\"/tiddlybox.js\"></script>");
-		result.append("<script type=\"text/javascript\">var tiddlybox_post_url = '"
-				+ ServletMapper.WIKI
-				+ m_userService.getWikiPath()
-				+ "'</script>");
 		result.append(getFromStartOf(original, "<!--POST-SCRIPT-END-->"));
 		return result.toString();
 	}
 
-	public void saveNewStore(BufferedReader newStore) throws IOException,
-			OAuthMessageSignerException, OAuthExpectationFailedException,
-			OAuthCommunicationException, ParseException {
+	public void saveNewStore(BufferedReader newStore, String wikiPath)
+			throws IOException, OAuthMessageSignerException,
+			OAuthExpectationFailedException, OAuthCommunicationException,
+			ParseException {
 		StringBuilder result = new StringBuilder();
-		String wikiPath = m_userService.getWikiPath();
+		byte[] originalFile = m_fileService.getFile(wikiPath);
 		result.append(
-				getToEndOf(new String(m_fileService.getFile(wikiPath)),
-						"<!--POST-SHADOWAREA-->")).append('\n');
+				getToEndOf(new String(originalFile), "<!--POST-SHADOWAREA-->"))
+				.append('\n');
 		result.append("<div id=\"storeArea\">").append('\n');
 		String line = null;
 		while ((line = newStore.readLine()) != null) {
 			result.append(line).append('\n');
 		}
 		result.append("</div>").append('\n');
-		result.append(getFromStartOf(
-				new String(m_fileService.getFile(wikiPath)),
+		result.append(getFromStartOf(new String(originalFile),
 				"<!--POST-STOREAREA-->"));
 
 		m_fileService.putFile(wikiPath, result.toString().getBytes());
