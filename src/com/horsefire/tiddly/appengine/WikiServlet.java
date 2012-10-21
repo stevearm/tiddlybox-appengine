@@ -42,7 +42,7 @@ public class WikiServlet extends PreferencedServlet {
 			throws ServletException, IOException {
 		String path = getPath(req);
 		if (prefs.needsAuthorization()) {
-			resp.sendRedirect(ServletMapper.HANDSHAKE_ONE);
+			resp.sendRedirect(ServletMapper.HANDSHAKE_ONE + "?path=" + path);
 			return;
 		}
 

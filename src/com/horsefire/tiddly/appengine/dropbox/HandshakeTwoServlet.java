@@ -47,7 +47,7 @@ public class HandshakeTwoServlet extends PreferencedServlet {
 			prefs.setOauthTokenKey(consumer.getToken());
 			prefs.setOauthTokenSecret(consumer.getTokenSecret());
 
-			resp.sendRedirect(ServletMapper.WIKI + "/");
+			resp.sendRedirect(ServletMapper.WIKI + req.getParameter("path"));
 		} catch (OAuthMessageSignerException e) {
 			error(resp, e);
 		} catch (OAuthNotAuthorizedException e) {
