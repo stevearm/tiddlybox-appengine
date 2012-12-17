@@ -12,13 +12,13 @@ import oauth.signpost.exception.OAuthCommunicationException;
 import oauth.signpost.exception.OAuthExpectationFailedException;
 import oauth.signpost.exception.OAuthMessageSignerException;
 
+import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.horsefire.tiddly.appengine.IoUtils;
 import com.horsefire.tiddly.appengine.UserInfoService;
 
 public class DropboxService {
@@ -51,7 +51,7 @@ public class DropboxService {
 
 		m_consumer.sign(connection);
 		if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-			return IoUtils.getBytes(connection.getInputStream());
+			return IOUtils.toByteArray(connection.getInputStream());
 		}
 		LOG.error("Error getting file with path {}. Got response {}", url,
 				connection.getResponseCode());
@@ -89,7 +89,7 @@ public class DropboxService {
 		LOG.error(
 				"Failed to save {} to {}: {}",
 				new Object[] { connection.getResponseCode(), url,
-						IoUtils.getString(connection.getInputStream()) });
+						new String(IOUtils.toByteArray(connection.getInputStream())) });
 		throw new IOException();
 	}
 

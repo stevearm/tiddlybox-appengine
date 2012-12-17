@@ -1,6 +1,7 @@
 package com.horsefire.tiddly.appengine.dropbox;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -47,7 +48,7 @@ public class HandshakeTwoServlet extends PreferencedServlet {
 			prefs.setOauthTokenKey(consumer.getToken());
 			prefs.setOauthTokenSecret(consumer.getTokenSecret());
 
-			resp.sendRedirect(ServletMapper.WIKI + req.getParameter("path"));
+			resp.sendRedirect(ServletMapper.WIKI + URLDecoder.decode(req.getParameter("path"), "UTF-8"));
 		} catch (OAuthMessageSignerException e) {
 			error(resp, e);
 		} catch (OAuthNotAuthorizedException e) {
