@@ -26,6 +26,31 @@ function updateLink() {
   linkElement.href = path;
   linkElement.innerHTML = path;
 }
+
+function createCookie(name,value,days) {
+	if (days) {
+		var date = new Date();
+		date.setTime(date.getTime()+(days*24*60*60*1000));
+		var expires = "; expires="+date.toGMTString();
+	}
+	else var expires = "";
+	document.cookie = name+"="+value+expires+"; path=/";
+}
+
+function readCookie(name) {
+	var nameEQ = name + "=";
+	var ca = document.cookie.split(';');
+	for(var i=0;i < ca.length;i++) {
+		var c = ca[i];
+		while (c.charAt(0)==' ') c = c.substring(1,c.length);
+		if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+	}
+	return null;
+}
+
+function eraseCookie(name) {
+	createCookie(name,"",-1);
+}
   </script>
 </head>
 <body>
@@ -45,9 +70,15 @@ function updateLink() {
     Dropbox path <input id="path" type="text" value="/Wiki/TiddlyWiki.html" onchange="updateLink();"/>
     is viewable at <a id="link" href="/broken">/broken</a>
   </div>
+  <div>
+    Cookie value: <span id="cookie"></span><button onclick="eraseCookie('tiddlyboxkey');">Clear</button>
+  </div>
   <div class="about">
     This open-source project is hosted at <a href="https://github.com/stevearm/tiddlybox">GitHub</a>.
   </div>
-  <script type="text/javascript">updateLink();</script>
+  <script type="text/javascript">
+updateLink();
+document.getElementById('cookie').innerHTML = readCookie('tiddlyboxkey');
+  </script>
 </body>
 </html>

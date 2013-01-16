@@ -9,15 +9,12 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import oauth.signpost.exception.OAuthCommunicationException;
-import oauth.signpost.exception.OAuthExpectationFailedException;
-import oauth.signpost.exception.OAuthMessageSignerException;
-
-import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.appengine.api.datastore.DatastoreService;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.horsefire.tiddly.QueryString;
 import com.horsefire.tiddly.SingleFileService;
 import com.horsefire.tiddly.StatelessWikiService;
@@ -26,8 +23,10 @@ import com.horsefire.tiddly.TiddlerRenderer;
 import com.horsefire.tiddly.TiddlerService;
 import com.horsefire.tiddly.Wiki;
 import com.horsefire.tiddly.appengine.dropbox.DropboxService;
+import com.horsefire.tiddly.appengine.dropbox.DropboxService.UnauthorizedException;
 
 @SuppressWarnings("serial")
+@Singleton
 public class WikiServlet extends PreferencedServlet {
 
 	private static final Logger LOG = LoggerFactory
@@ -44,23 +43,18 @@ public class WikiServlet extends PreferencedServlet {
 	}
 
 	private static SingleFileService getFileService(final String path,
-			DatastoreService datastore, UserInfoService prefs) {
+			DatastoreService datastore, UserInfoService prefs,
+			DropboxService dropboxService) {
 		final FileService service = new FileService(datastore, prefs,
-				new DropboxService(prefs));
+				dropboxService);
 		return new SingleFileService() {
 			@Override
 			public byte[] get() {
 				try {
 					return service.getFile(path);
-				} catch (OAuthMessageSignerException e) {
-					throw new RuntimeException(e);
-				} catch (OAuthExpectationFailedException e) {
-					throw new RuntimeException(e);
-				} catch (OAuthCommunicationException e) {
+				} catch (UnauthorizedException e) {
 					throw new RuntimeException(e);
 				} catch (IOException e) {
-					throw new RuntimeException(e);
-				} catch (ParseException e) {
 					throw new RuntimeException(e);
 				}
 			}
@@ -69,34 +63,35 @@ public class WikiServlet extends PreferencedServlet {
 			public void put(byte[] file) {
 				try {
 					service.putFile(path, file);
-				} catch (OAuthMessageSignerException e) {
-					throw new RuntimeException(e);
-				} catch (OAuthExpectationFailedException e) {
-					throw new RuntimeException(e);
-				} catch (OAuthCommunicationException e) {
+				} catch (UnauthorizedException e) {
 					throw new RuntimeException(e);
 				} catch (IOException e) {
-					throw new RuntimeException(e);
-				} catch (ParseException e) {
 					throw new RuntimeException(e);
 				}
 			}
 		};
 	}
 
+	private final DropboxService m_dropboxService;
+
+	@Inject
+	public WikiServlet(DropboxService dropboxService) {
+		m_dropboxService = dropboxService;
+	}
+	
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
 			DatastoreService datastore, UserInfoService userService)
 			throws ServletException, IOException {
 		final String path = getPath(req);
 		if (userService.needsAuthorization()) {
-			resp.sendRedirect(ServletMapper.HANDSHAKE_ONE + "?path="
+			resp.sendRedirect(BootstrapListener.HANDSHAKE_ONE_URL + "?path="
 					+ URLEncoder.encode(path, "UTF-8"));
 			return;
 		}
 
 		SingleFileService fileService = getFileService(path, datastore,
-				userService);
+				userService, m_dropboxService);
 		com.horsefire.tiddly.WikiService wikiService = new StatelessWikiService(
 				fileService);
 		PrintWriter out = resp.getWriter();
@@ -112,7 +107,7 @@ public class WikiServlet extends PreferencedServlet {
 				out.print("Tiddler " + tiddlerName + " does not exist");
 			} else {
 				TiddlerRenderer renderer = new TiddlerRenderer(
-						ServletMapper.WIKI + path + "?tiddler=");
+						BootstrapListener.WIKI_URL + path + "?tiddler=");
 				out.print(renderer.render(tiddler));
 			}
 		} else {
@@ -153,8 +148,8 @@ public class WikiServlet extends PreferencedServlet {
 		}
 
 		SingleFileService fileService = getFileService(path, datastore,
-				userService);
-		
+				userService, m_dropboxService);
+
 		String queryString = req.getQueryString();
 		String tiddlerName = null;
 		if (queryString != null && !queryString.isEmpty()) {

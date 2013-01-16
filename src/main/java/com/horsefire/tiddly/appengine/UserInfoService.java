@@ -15,6 +15,10 @@ import com.google.appengine.api.datastore.KeyFactory;
 
 public class UserInfoService {
 
+	public static final String COOKIE_KEY = "tiddlyboxkey";
+	public static final String DB_KEY_OAUTH_TOKEN_KEY = "oauthTokenKey";
+	public static final String DB_KEY_OAUTH_TOKEN_SECRET = "oauthTokenSecret";
+
 	private static boolean isEmpty(String string) {
 		return string == null || string.isEmpty();
 	}
@@ -30,12 +34,11 @@ public class UserInfoService {
 	* 24 /* hour/day */
 	* 60 /* days */;
 
-	private static final String KEY_OAUTH_TOKEN_KEY = "oauthTokenKey";
-	private static final String KEY_OAUTH_TOKEN_SECRET = "oauthTokenSecret";
 	private static final String KEY_COOKIE_EXPIRY = "cookieExpires";
 
 	private final DatastoreService m_datastore;
 	private Entity m_entity;
+
 
 	public UserInfoService(DatastoreService datastore) {
 		m_datastore = datastore;
@@ -43,17 +46,16 @@ public class UserInfoService {
 
 	private String getSessionKey(HttpServletRequest req,
 			HttpServletResponse resp) {
-		final String cookieKey = "tiddlyboxkey";
 		Cookie[] cookies = req.getCookies();
 		if (cookies != null) {
 			for (Cookie cookie : cookies) {
-				if (cookieKey.equals(cookie.getName())) {
+				if (COOKIE_KEY.equals(cookie.getName())) {
 					return cookie.getValue();
 				}
 			}
 		}
 		String value = UUID.randomUUID().toString();
-		Cookie cookie = new Cookie(cookieKey, value);
+		Cookie cookie = new Cookie(COOKIE_KEY, value);
 		cookie.setPath("/");
 		cookie.setMaxAge(EXPIRE_SECONDS);
 		resp.addCookie(cookie);
@@ -85,7 +87,7 @@ public class UserInfoService {
 
 	public String getOauthTokenKey() {
 		String oauthTokenKey = (String) m_entity
-				.getProperty(UserInfoService.KEY_OAUTH_TOKEN_KEY);
+				.getProperty(UserInfoService.DB_KEY_OAUTH_TOKEN_KEY);
 		if (oauthTokenKey == null) {
 			return "";
 		}
@@ -94,12 +96,12 @@ public class UserInfoService {
 
 	public void setOauthTokenKey(String oauthTokenKey) {
 		assertNotEmpty(oauthTokenKey, "Key");
-		m_entity.setProperty(UserInfoService.KEY_OAUTH_TOKEN_KEY, oauthTokenKey);
+		m_entity.setProperty(UserInfoService.DB_KEY_OAUTH_TOKEN_KEY, oauthTokenKey);
 	}
 
 	public String getOauthTokenSecret() {
 		String oauthTokenSecret = (String) m_entity
-				.getProperty(UserInfoService.KEY_OAUTH_TOKEN_SECRET);
+				.getProperty(UserInfoService.DB_KEY_OAUTH_TOKEN_SECRET);
 		if (oauthTokenSecret == null) {
 			return "";
 		}
@@ -108,7 +110,7 @@ public class UserInfoService {
 
 	public void setOauthTokenSecret(String oauthTokenSecret) {
 		assertNotEmpty(oauthTokenSecret, "Secret");
-		m_entity.setProperty(UserInfoService.KEY_OAUTH_TOKEN_SECRET,
+		m_entity.setProperty(UserInfoService.DB_KEY_OAUTH_TOKEN_SECRET,
 				oauthTokenSecret);
 	}
 

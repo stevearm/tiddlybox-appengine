@@ -13,9 +13,13 @@
 		<appengine.app.version>6-snapshot</appengine.app.version>
 		<appengine.target.version>1.7.4</appengine.target.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		
+		<guice.version>3.0</guice.version>
+		<slf4j.version>1.6.6</slf4j.version>
 	</properties>
 
 	<dependencies>
+		<!-- Project dependencies -->
 		<dependency>
 			<groupId>com.horsefire.tiddly</groupId>
 			<artifactId>tiddly-utils</artifactId>
@@ -36,8 +40,33 @@
 			<artifactId>commons-io</artifactId>
 			<version>2.4</version>
 		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-jdk14</artifactId>
+			<version>${slf4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.inject</groupId>
+			<artifactId>guice</artifactId>
+			<version>${guice.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.inject.extensions</groupId>
+			<artifactId>guice-servlet</artifactId>
+			<version>${guice.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.inject.extensions</groupId>
+			<artifactId>guice-assistedinject</artifactId>
+			<version>${guice.version}</version>
+		</dependency>
 
-		<!-- Compile/runtime dependencies -->
+		<!-- App engine dependencies -->
 		<dependency>
 			<groupId>com.google.appengine</groupId>
 			<artifactId>appengine-api-1.0-sdk</artifactId>
@@ -66,6 +95,12 @@
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-all</artifactId>
 			<version>1.9.0</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.easymock</groupId>
+			<artifactId>easymock</artifactId>
+			<version>3.0</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

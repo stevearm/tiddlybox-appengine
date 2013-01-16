@@ -6,7 +6,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-import oauth.signpost.OAuthConsumer;
 import oauth.signpost.basic.DefaultOAuthConsumer;
 import oauth.signpost.exception.OAuthCommunicationException;
 import oauth.signpost.exception.OAuthExpectationFailedException;
@@ -19,28 +18,40 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.horsefire.tiddly.appengine.UserInfoService;
+import com.google.inject.Inject;
 
 public class DropboxService {
+
+	public static final String URL_REQUEST_TOKEN = "http://api.getdropbox.com/0/oauth/request_token";
+	public static final String URL_ACCESS_TOKEN = "http://api.getdropbox.com/0/oauth/access_token";
+	public static final String URL_AUTHORIZATION = "http://api.getdropbox.com/0/oauth/authorize";
 
 	public static final String META_KEY_REV = "rev";
 	public static final String META_KEY_BYTES = "bytes";
 
+	@SuppressWarnings("serial")
+	public static class UnauthorizedException extends IOException {
+		public UnauthorizedException() {
+			super("Not authorized");
+		}
+	}
+
 	private static final Logger LOG = LoggerFactory
 			.getLogger(DropboxService.class);
 
-	private final OAuthConsumer m_consumer;
+	private final AppCredentials m_appCredentials;
 
-	public DropboxService(UserInfoService userService) {
-		m_consumer = new DefaultOAuthConsumer(AppCredentials.INSTANCE.getKey(),
-				AppCredentials.INSTANCE.getSecret());
-		m_consumer.setTokenWithSecret(userService.getOauthTokenKey(),
-				userService.getOauthTokenSecret());
+	@Inject
+	public DropboxService(AppCredentials appCredentials) {
+		m_appCredentials = appCredentials;
 	}
 
-	public byte[] getBytes(String path) throws IOException,
-			OAuthMessageSignerException, OAuthExpectationFailedException,
-			OAuthCommunicationException {
+	public byte[] getBytes(String key, String secret, String path)
+			throws IOException, UnauthorizedException {
+		DefaultOAuthConsumer consumer = new DefaultOAuthConsumer(
+				m_appCredentials.getKey(), m_appCredentials.getSecret());
+		consumer.setTokenWithSecret(key, secret);
+
 		LOG.debug("Getting dropbox file {}", path);
 		final URL url = new URL(
 				"https://api-content.dropbox.com/0/files/dropbox" + path);
@@ -49,19 +60,36 @@ public class DropboxService {
 		connection.setDoOutput(true);
 		connection.setRequestMethod("GET");
 
-		m_consumer.sign(connection);
-		if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+		try {
+			consumer.sign(connection);
+		} catch (OAuthMessageSignerException e) {
+			throw new IOException("Security problem signing request", e);
+		} catch (OAuthExpectationFailedException e) {
+			throw new IOException("Security problem signing request", e);
+		} catch (OAuthCommunicationException e) {
+			throw new IOException("Security problem signing request", e);
+		}
+
+		int responseCode = connection.getResponseCode();
+		if (responseCode == HttpURLConnection.HTTP_OK) {
 			return IOUtils.toByteArray(connection.getInputStream());
 		}
-		LOG.error("Error getting file with path {}. Got response {}", url,
-				connection.getResponseCode());
+
+		LOG.error(
+				"Getting {} returned {}: {}",
+				new Object[] {
+						url,
+						responseCode,
+						new String(IOUtils.toByteArray(connection
+								.getInputStream())) });
+		if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+			throw new UnauthorizedException();
+		}
 		throw new IOException();
 	}
 
-	public JSONObject putBytes(String path, byte[] contents)
-			throws IOException, OAuthMessageSignerException,
-			OAuthExpectationFailedException, OAuthCommunicationException,
-			ParseException {
+	public JSONObject putBytes(String key, String secret, String path,
+			byte[] contents) throws IOException, UnauthorizedException {
 		LOG.debug("Saving dropbox file {}", path);
 		final URL url = new URL(
 				"https://api-content.dropbox.com/1/files_put/dropbox" + path);
@@ -72,30 +100,52 @@ public class DropboxService {
 		connection.setDoInput(true);
 		connection.setRequestProperty("Content-Length", "" + contents.length);
 
-		m_consumer.sign(connection);
+		try {
+			DefaultOAuthConsumer consumer = new DefaultOAuthConsumer(
+					m_appCredentials.getKey(), m_appCredentials.getSecret());
+			consumer.setTokenWithSecret(key, secret);
+			consumer.sign(connection);
+		} catch (OAuthMessageSignerException e) {
+			throw new IOException("Security problem signing request", e);
+		} catch (OAuthExpectationFailedException e) {
+			throw new IOException("Security problem signing request", e);
+		} catch (OAuthCommunicationException e) {
+			throw new IOException("Security problem signing request", e);
+		}
 
 		OutputStream out = connection.getOutputStream();
 		out.write(contents);
 		out.close();
 
-		if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-			Object object = new JSONParser().parse(new InputStreamReader(
-					connection.getInputStream()));
-			if (!(object instanceof JSONObject)) {
-				throw new IOException("Metadata response must be a json object");
+		int responseCode = connection.getResponseCode();
+		if (responseCode == HttpURLConnection.HTTP_OK) {
+			try {
+				Object object = new JSONParser().parse(new InputStreamReader(
+						connection.getInputStream()));
+				if (!(object instanceof JSONObject)) {
+					throw new IOException(
+							"Metadata response must be a json object");
+				}
+				return (JSONObject) object;
+			} catch (ParseException e) {
+				throw new IOException("Response is not parsable json", e);
 			}
-			return (JSONObject) object;
 		}
 		LOG.error(
-				"Failed to save {} to {}: {}",
-				new Object[] { connection.getResponseCode(), url,
-						new String(IOUtils.toByteArray(connection.getInputStream())) });
+				"Saving to {} returned {}: {}",
+				new Object[] {
+						url,
+						responseCode,
+						new String(IOUtils.toByteArray(connection
+								.getInputStream())) });
+		if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+			throw new UnauthorizedException();
+		}
 		throw new IOException();
 	}
 
-	public JSONObject getMetadata(String path) throws IOException,
-			OAuthMessageSignerException, OAuthExpectationFailedException,
-			OAuthCommunicationException, ParseException {
+	public JSONObject getMetadata(String key, String secret, String path)
+			throws IOException, UnauthorizedException {
 		LOG.debug("Getting dropbox metadata for {}", path);
 		final URL url = new URL("https://api.dropbox.com/1/metadata/dropbox"
 				+ path);
@@ -104,17 +154,43 @@ public class DropboxService {
 		connection.setDoOutput(true);
 		connection.setRequestMethod("GET");
 
-		m_consumer.sign(connection);
-		if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
-			Object object = new JSONParser().parse(new InputStreamReader(
-					connection.getInputStream()));
-			if (!(object instanceof JSONObject)) {
-				throw new IOException("Metadata response must be a json object");
-			}
-			return (JSONObject) object;
+		try {
+			DefaultOAuthConsumer consumer = new DefaultOAuthConsumer(
+					m_appCredentials.getKey(), m_appCredentials.getSecret());
+			consumer.setTokenWithSecret(key, secret);
+			consumer.sign(connection);
+		} catch (OAuthMessageSignerException e) {
+			throw new IOException("Security problem signing request", e);
+		} catch (OAuthExpectationFailedException e) {
+			throw new IOException("Security problem signing request", e);
+		} catch (OAuthCommunicationException e) {
+			throw new IOException("Security problem signing request", e);
 		}
-		LOG.error("Error getting metadata for {}. Got response {}", url,
-				connection.getResponseCode());
+
+		int responseCode = connection.getResponseCode();
+		if (responseCode == HttpURLConnection.HTTP_OK) {
+			try {
+				Object object = new JSONParser().parse(new InputStreamReader(
+						connection.getInputStream()));
+				if (!(object instanceof JSONObject)) {
+					throw new IOException(
+							"Metadata response must be a json object");
+				}
+				return (JSONObject) object;
+			} catch (ParseException e) {
+				throw new IOException("Response is not parsable json", e);
+			}
+		}
+		LOG.error(
+				"Getting metadata for {} returned {}: {}",
+				new Object[] {
+						url,
+						responseCode,
+						new String(IOUtils.toByteArray(connection
+								.getInputStream())) });
+		if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED) {
+			throw new UnauthorizedException();
+		}
 		throw new IOException();
 	}
 }

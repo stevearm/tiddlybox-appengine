@@ -18,26 +18,35 @@ import oauth.signpost.exception.OAuthNotAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import com.horsefire.tiddly.appengine.BootstrapListener;
 import com.horsefire.tiddly.appengine.PreferencedServlet;
-import com.horsefire.tiddly.appengine.ServletMapper;
 import com.horsefire.tiddly.appengine.UserInfoService;
 
 @SuppressWarnings("serial")
+@Singleton
 public class HandshakeOneServlet extends PreferencedServlet {
 
 	private static final Logger LOG = LoggerFactory
 			.getLogger(HandshakeOneServlet.class);
 
+	private final AppCredentials m_appCredentials;
+
+	@Inject
+	public HandshakeOneServlet(AppCredentials appCredentials) {
+		m_appCredentials = appCredentials;
+	}
+
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
 			UserInfoService prefs) throws ServletException, IOException {
 		final OAuthConsumer consumer = new DefaultOAuthConsumer(
-				AppCredentials.INSTANCE.getKey(),
-				AppCredentials.INSTANCE.getSecret());
+				m_appCredentials.getKey(), m_appCredentials.getSecret());
 		final OAuthProvider provider = new DefaultOAuthProvider(
-				DropboxWikiClient.VALUE_REQUEST_TOKEN_URL,
-				DropboxWikiClient.VALUE_ACCESS_TOKEN_URL,
-				DropboxWikiClient.VALUE_AUTHORIZATION_URL);
+				DropboxService.URL_REQUEST_TOKEN,
+				DropboxService.URL_ACCESS_TOKEN,
+				DropboxService.URL_AUTHORIZATION);
 
 		try {
 			String host = "http://" + req.getServerName();
@@ -45,8 +54,9 @@ public class HandshakeOneServlet extends PreferencedServlet {
 				host = host + ':' + req.getLocalPort();
 			}
 			final String url = provider.retrieveRequestToken(consumer,
-					(host + req.getContextPath()) + ServletMapper.HANDSHAKE_TWO
-							+ "?path=" + req.getParameter("path"));
+					(host + req.getContextPath())
+							+ BootstrapListener.HANDSHAKE_TWO_URL + "?path="
+							+ req.getParameter("path"));
 			prefs.setOauthTokenKey(consumer.getToken());
 			prefs.setOauthTokenSecret(consumer.getTokenSecret());
 			resp.sendRedirect(url);

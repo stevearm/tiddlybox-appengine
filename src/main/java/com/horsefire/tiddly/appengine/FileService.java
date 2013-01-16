@@ -2,12 +2,7 @@ package com.horsefire.tiddly.appengine;
 
 import java.io.IOException;
 
-import oauth.signpost.exception.OAuthCommunicationException;
-import oauth.signpost.exception.OAuthExpectationFailedException;
-import oauth.signpost.exception.OAuthMessageSignerException;
-
 import org.json.simple.JSONObject;
-import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +13,7 @@ import com.google.appengine.api.datastore.EntityNotFoundException;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.horsefire.tiddly.appengine.dropbox.DropboxService;
+import com.horsefire.tiddly.appengine.dropbox.DropboxService.UnauthorizedException;
 
 public class FileService {
 
@@ -51,10 +47,11 @@ public class FileService {
 		m_datastore.put(entity);
 	}
 
-	public byte[] getFile(String path) throws OAuthMessageSignerException,
-			OAuthExpectationFailedException, OAuthCommunicationException,
-			IOException, ParseException {
-		JSONObject metadata = m_dropboxService.getMetadata(path);
+	public byte[] getFile(String path) throws IOException,
+			UnauthorizedException {
+		JSONObject metadata = m_dropboxService.getMetadata(
+				m_userService.getOauthTokenKey(),
+				m_userService.getOauthTokenSecret(), path);
 		long size = (Long) metadata.get(DropboxService.META_KEY_BYTES);
 		if (size > MAX_BYTES) {
 			LOG.error("Skipping {} because {} bytes is larger than 1MB", path,
@@ -76,17 +73,19 @@ public class FileService {
 		} catch (EntityNotFoundException e) {
 			LOG.debug("Cache miss {}", path);
 		}
-		byte[] bytes = m_dropboxService.getBytes(path);
+		byte[] bytes = m_dropboxService.getBytes(
+				m_userService.getOauthTokenKey(),
+				m_userService.getOauthTokenSecret(), path);
 		save(key, currentRev, bytes);
 		return bytes;
 	}
 
-	public void putFile(String path, byte[] contents)
-			throws OAuthMessageSignerException,
-			OAuthExpectationFailedException, OAuthCommunicationException,
-			IOException, ParseException {
+	public void putFile(String path, byte[] contents) throws IOException,
+			UnauthorizedException {
 		LOG.debug("Saving to {}", path);
-		JSONObject metadata = m_dropboxService.putBytes(path, contents);
+		JSONObject metadata = m_dropboxService.putBytes(
+				m_userService.getOauthTokenKey(),
+				m_userService.getOauthTokenSecret(), path, contents);
 		String currentRev = (String) metadata.get(DropboxService.META_KEY_REV);
 		save(getKey(path), currentRev, contents);
 	}

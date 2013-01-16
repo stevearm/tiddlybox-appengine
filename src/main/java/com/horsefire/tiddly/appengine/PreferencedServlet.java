@@ -27,8 +27,7 @@ public abstract class PreferencedServlet extends HttpServlet {
 
 	private void service(HttpServletRequest req, HttpServletResponse resp,
 			boolean get) throws ServletException, IOException {
-		DatastoreService datastore = DatastoreServiceFactory
-				.getDatastoreService();
+		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 		UserInfoService userService = new UserInfoService(datastore);
 		userService.init(req, resp);
 		if (get) {

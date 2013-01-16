@@ -19,26 +19,35 @@ import oauth.signpost.exception.OAuthNotAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
+import com.horsefire.tiddly.appengine.BootstrapListener;
 import com.horsefire.tiddly.appengine.PreferencedServlet;
-import com.horsefire.tiddly.appengine.ServletMapper;
 import com.horsefire.tiddly.appengine.UserInfoService;
 
 @SuppressWarnings("serial")
+@Singleton
 public class HandshakeTwoServlet extends PreferencedServlet {
 
 	private static final Logger LOG = LoggerFactory
 			.getLogger(HandshakeTwoServlet.class);
 
+	private final AppCredentials m_appCredentials;
+
+	@Inject
+	public HandshakeTwoServlet(AppCredentials appCredentials) {
+		m_appCredentials = appCredentials;
+	}
+
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
 			UserInfoService prefs) throws ServletException, IOException {
 
 		final OAuthConsumer consumer = new DefaultOAuthConsumer(
-				AppCredentials.INSTANCE.getKey(),
-				AppCredentials.INSTANCE.getSecret());
+				m_appCredentials.getKey(), m_appCredentials.getSecret());
 		final OAuthProvider provider = new DefaultOAuthProvider(
-				DropboxWikiClient.VALUE_REQUEST_TOKEN_URL,
-				DropboxWikiClient.VALUE_ACCESS_TOKEN_URL,
-				DropboxWikiClient.VALUE_AUTHORIZATION_URL);
+				DropboxService.URL_REQUEST_TOKEN,
+				DropboxService.URL_ACCESS_TOKEN,
+				DropboxService.URL_AUTHORIZATION);
 
 		try {
 			consumer.setTokenWithSecret(prefs.getOauthTokenKey(),
@@ -48,7 +57,8 @@ public class HandshakeTwoServlet extends PreferencedServlet {
 			prefs.setOauthTokenKey(consumer.getToken());
 			prefs.setOauthTokenSecret(consumer.getTokenSecret());
 
-			resp.sendRedirect(ServletMapper.WIKI + URLDecoder.decode(req.getParameter("path"), "UTF-8"));
+			resp.sendRedirect(BootstrapListener.WIKI_URL
+					+ URLDecoder.decode(req.getParameter("path"), "UTF-8"));
 		} catch (OAuthMessageSignerException e) {
 			error(resp, e);
 		} catch (OAuthNotAuthorizedException e) {
