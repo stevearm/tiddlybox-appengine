@@ -78,7 +78,7 @@ public class WikiServlet extends PreferencedServlet {
 	public WikiServlet(DropboxService dropboxService) {
 		m_dropboxService = dropboxService;
 	}
-	
+
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp,
 			DatastoreService datastore, UserInfoService userService)
@@ -97,8 +97,10 @@ public class WikiServlet extends PreferencedServlet {
 		PrintWriter out = resp.getWriter();
 		String queryString = req.getQueryString();
 		String tiddlerName = null;
+		QueryString queryStringParsed = null;
 		if (queryString != null && !queryString.isEmpty()) {
-			tiddlerName = new QueryString(queryString).getParameter("tiddler");
+			queryStringParsed = new QueryString(queryString);
+			tiddlerName = queryStringParsed.getParameter("tiddler");
 		}
 		if (tiddlerName != null && !tiddlerName.isEmpty()) {
 			TiddlerService tiddlerService = new TiddlerService(wikiService);
@@ -106,18 +108,24 @@ public class WikiServlet extends PreferencedServlet {
 			if (tiddler == null) {
 				out.print("Tiddler " + tiddlerName + " does not exist");
 			} else {
-				TiddlerRenderer renderer = new TiddlerRenderer(
-						BootstrapListener.WIKI_URL + path + "?tiddler=");
-				out.print(renderer.render(tiddler));
+				if ("true".equals(queryStringParsed.getParameter("edit"))) {
+					out.print("<html>");
+					out.print("<head><style>textarea{width:600px;height:200px}</style></head>");
+					out.print("<body><form method=\"post\" action=\"");
+					out.print(BootstrapListener.WIKI_URL + path + "?"
+							+ queryString);
+					out.print("\"><textarea name=\"content\">");
+					out.print(tiddler.content);
+					out.print("</textarea><input type=\"submit\"/></body></html>");
+				} else {
+					TiddlerRenderer renderer = new TiddlerRenderer(
+							BootstrapListener.WIKI_URL + path + "?tiddler=");
+					out.print(renderer.render(tiddler));
+				}
 			}
 		} else {
-			Wiki wiki = wikiService.get();
-
-			out.print(wiki.getHeader());
-			out.print(wiki.getStore());
-			out.print(wiki.getPostStore());
-			out.print("<script type=\"text/javascript\" src=\"/tiddlybox.js\"></script>");
-			out.print(wiki.getPostScript());
+			WikiServletNode node = new WikiServletNode(out, wikiService);
+			node.render();
 		}
 	}
 
@@ -156,8 +164,16 @@ public class WikiServlet extends PreferencedServlet {
 			tiddlerName = new QueryString(queryString).getParameter("tiddler");
 		}
 		if (tiddlerName != null && !tiddlerName.isEmpty()) {
-			resp.getWriter()
-					.print("{\"success\":false,\"message\":\"Saving tiddlers not yet supported\"}");
+			String content = req.getParameter("content");
+			TiddlerService tiddlerService = new TiddlerService(
+					new StatelessWikiService(fileService));
+			Tiddler tiddler = tiddlerService.get(tiddlerName);
+			int changeCount = Integer.parseInt(tiddler.changecount);
+			changeCount++;
+			tiddler.changecount = Integer.toString(changeCount);
+			tiddler.content = content.replaceAll("\r\n", "\n");
+			tiddlerService.put(tiddler);
+			resp.getWriter().print("Saved");
 		} else {
 			StatelessWikiService statelessWikiService = new StatelessWikiService(
 					fileService);
